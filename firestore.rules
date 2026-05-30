@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Strictly deny all by default)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE SECURITY UTILITIES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "imdmahin4567@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY MATCH SPECIFICATIONS ---
+
+    // 1. PRODUCTS
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(productId) && isValidProduct(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidProduct(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasAny(['title', 'description', 'shortDescription', 'price', 'discountPrice', 'images', 'colors', 'sizes', 'inventory', 'rating', 'reviewsCount', 'category', 'isFeatured', 'isNewArrival', 'isTrending', 'isFlashSale'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['title', 'slug', 'sku', 'price', 'category']) &&
+        data.title is string && data.title.size() <= 200 &&
+        data.slug is string && data.slug.size() <= 200 &&
+        data.sku is string && data.sku.size() <= 100 &&
+        data.price is number && data.price >= 0 &&
+        data.category is string && data.category.size() <= 100 &&
+        (!data.keys().hasAll(['discountPrice']) || (data.discountPrice is number && data.discountPrice >= 0)) &&
+        (!data.keys().hasAll(['inventory']) || data.inventory is int) &&
+        (!data.keys().hasAll(['images']) || data.images is list) &&
+        (!data.keys().hasAll(['colors']) || data.colors is list) &&
+        (!data.keys().hasAll(['sizes']) || data.sizes is list);
+    }
+
+    // 2. CUSTOMIZATION
+    match /customization/{docId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidCustomization(incoming());
+      allow delete: if isAdmin();
+    }
+
+    function isValidCustomization(data) {
+      return data.keys().hasAll(['heroTitle', 'heroSubtitle', 'accentColor']) &&
+        data.heroTitle is string && data.heroTitle.size() <= 500 &&
+        data.heroSubtitle is string && data.heroSubtitle.size() <= 1000 &&
+        data.accentColor is string && data.accentColor.size() <= 20;
+    }
+
+    // 3. REVIEWS
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(reviewId) && isValidReview(incoming()) && 
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidReview(incoming()) && (
+        existing().userId == request.auth.uid || isAdmin()
+      ) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['productId', 'userId', 'userName', 'rating', 'comment']) &&
+        data.productId is string && data.productId.size() <= 128 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() <= 200 &&
+        data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+        data.comment is string && data.comment.size() <= 1000;
+    }
+
+    // 4. ORDERS
+    match /orders/{orderId} {
+      // reads: only the owner of the order or an admin can access
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      // list: must enforce filter
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() && isValidId(orderId) && isValidOrder(incoming()) &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time;
+        
+      allow update: if isAdmin() && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'deliveryNotes'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['customerEmail', 'customerName', 'userId', 'items', 'totalAmount', 'status']) &&
+        data.customerEmail is string && data.customerEmail.size() <= 200 &&
+        data.customerName is string && data.customerName.size() <= 200 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.items is list && data.items.size() > 0 &&
+        data.totalAmount is number && data.totalAmount >= 0 &&
+        data.status is string && data.status.size() <= 50;
+    }
+
+    // 5. ADMINS COLLECTION
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

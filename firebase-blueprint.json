@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "product": {
+      "title": "Product",
+      "description": "Represents an elegant Islamic fashion product (Borka, Abaya, Hijab).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "sku": { "type": "string" },
+        "description": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "price": { "type": "number" },
+        "discountPrice": { "type": "number" },
+        "images": { "type": "array" },
+        "colors": { "type": "array" },
+        "sizes": { "type": "array" },
+        "inventory": { "type": "integer" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "integer" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "isFeatured": { "type": "boolean" },
+        "isNewArrival": { "type": "boolean" },
+        "isTrending": { "type": "boolean" },
+        "isFlashSale": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "slug", "sku", "price", "category"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "Represents a customer purchase order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "customerName": { "type": "string" },
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "shippingAddress": { "type": "object" },
+        "orderNotes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerEmail", "customerName", "items", "totalAmount", "status"]
+    },
+    "review": {
+      "title": "Review",
+      "description": "Represents product review by a customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "userId", "userName", "rating", "comment"]
+    },
+    "customization": {
+      "title": "Customization",
+      "description": "Allows live theme and text customizations of the website.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroBanners": { "type": "array" },
+        "accentColor": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "announcementText": { "type": "string" },
+        "aboutText": { "type": "string" },
+        "instagramUrls": { "type": "array" }
+      },
+      "required": ["heroTitle", "heroSubtitle", "accentColor"]
+    }
+  },
+  "firestore": {
+    "products/{productId}": {
+      "schema": "product",
+      "description": "Product catalog collections"
+    },
+    "orders/{orderId}": {
+      "schema": "order",
+      "description": "User shopping orders"
+    },
+    "reviews/{reviewId}": {
+      "schema": "review",
+      "description": "Product evaluations"
+    },
+    "customization/{docId}": {
+      "schema": "customization",
+      "description": "Global website configuration control"
+    }
+  }
+}
